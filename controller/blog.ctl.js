@@ -55,7 +55,7 @@ module.exports.updateBlog = asyncHandler(async (req, res) => {
 
   const parsedDate = validateDate(date);
 
-  let saveData = {
+  const saveData = {
     ...reqData,
     date: parsedDate
   } 
@@ -65,7 +65,9 @@ module.exports.updateBlog = asyncHandler(async (req, res) => {
       { $set: saveData },
       { new: true, runValidators: true }
     );
-  
+  if (!blogData) {
+    throw ApiError.notFound('Blog is not found');
+  }
   return res
     .status(200)
     .json(
@@ -100,7 +102,9 @@ const { id } = req.params;
 validateId(id, 'Blog');
 
 const blogData = await Blog.findByIdAndDelete(id);
-  
+if (!blogData) {
+    throw ApiError.notFound('Blog data not found');
+}  
   return res
     .status(200)
     .json(
