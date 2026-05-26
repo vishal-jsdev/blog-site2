@@ -1,6 +1,7 @@
 const dayjs = require('dayjs');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
+const { mongoose } = require('mongoose');
 const { ApiError } = require('../APIError');
 
 const validateDate = (date) => {
@@ -19,6 +20,21 @@ const validateDate = (date) => {
   return parsedDate.toDate();
 };
 
+const validateId = (id, entity) => {
+  if (!id) {
+    throw ApiError.badRequest(`${entity} Id Is Required`);
+  }
+
+  if (id.trim() === '') {
+    throw ApiError.badRequest(`${entity} Id Can Not Be Empty`);
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest(`Invalid ${entity} id`);
+  }
+};
+
 module.exports = {
-  validateDate
+  validateDate,
+  validateId
 }

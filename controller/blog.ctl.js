@@ -1,7 +1,8 @@
 const Blog = require('../models/blog.Schema');
 const mongoose = require('mongoose');
 const {
-  validateDate
+  validateDate,
+  validateId
 } = require('../utils/blog/blogData.helper');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiResponse } = require('../utils/APIResponse');
@@ -11,7 +12,15 @@ module.exports.addBlog = asyncHandler(async (req, res) => {
   const { title, slug , content , author, category, date } = req.body;
   if (!title || !slug || !content || !author || !category || !date) {
     throw ApiError.badRequest(
-      'Title, Slug, Content, Author, Category and Date are required'
+      'Title, Slug, Content, Author, Category and Date are required',
+      {
+        title: !title ? 'Title is required' : undefined,
+        slug: !slug ? 'Slug is required' : undefined,
+        content: !content ? 'Content is required' : undefined,
+        author: !author ? 'Author is required' : undefined,
+        category: !category ? 'Category is required' : undefined,
+        date: !date ? 'Date is required' : undefined,
+      }
     );
   }
 
@@ -33,32 +42,25 @@ module.exports.addBlog = asyncHandler(async (req, res) => {
     .status(201)
     .json(
       ApiResponse.created(
-        { id: newBlog._id, title: newBlog.title, slug: newBlog.slug, content: newBlog.content, author: newBlog.author, category: newBlog.category,date: newBlog.date },
+        newBlog,
         'Blog created successfully!'
       )
     );
 });
 
 module.exports.updateBlog = asyncHandler(async (req, res) => {
-  const { id, title, slug , content , author, category, date } = req.body;
-if (!id || !title || !slug || !content || !author || !category || !date) {
-    throw ApiError.badRequest(
-      'ID, Title, Slug, Content, Author, Category and Date are required'
-    );
-  }
+  const { id, date, ...reqData } = req.body;
+  
+  validateId(id, 'Blog')
 
-    const parsedDate = validateDate(date);
+  const parsedDate = validateDate(date);
 
-let saveData = {
-  title,
-  slug,
-  content,
-  author,
-  category,
-  date: parsedDate
-} 
+  let saveData = {
+    ...reqData,
+    date: parsedDate
+  } 
 
-let blogData = await Blog.findByIdAndUpdate(
+  const blogData = await Blog.findByIdAndUpdate(
       id,
       { $set: saveData },
       { new: true, runValidators: true }
@@ -75,11 +77,14 @@ let blogData = await Blog.findByIdAndUpdate(
 });
 
 module.exports.getBlog = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+const { id } = req.params;
+validateId(id, 'Blog');
 
+const blogData = await Blog.findById(id);
+if (!blogData) {
+  throw ApiError.notFound('Blog is not found');
+}
 
-let blogData = await Blog.findById(id);
-  
   return res
     .status(200)
     .json(
@@ -92,9 +97,9 @@ let blogData = await Blog.findById(id);
 
 module.exports.removeBlog = asyncHandler(async (req, res) => {
 const { id } = req.params;
+validateId(id, 'Blog');
 
-
-let blogData = await Blog.findByIdAndDelete(id);
+const blogData = await Blog.findByIdAndDelete(id);
   
   return res
     .status(200)
@@ -112,14 +117,14 @@ page = parseInt(page) || 1;
 limit = parseInt(limit) || 10;
 
 const skip = (page - 1) * limit;
-let blogs = await Blog.find().sort({ date: -1 }).skip(skip).limit(limit).lean();
+const blogs = await Blog.find().sort({ date: -1 }).skip(skip).limit(limit).lean();
   
   return res
     .status(200)
     .json(
       ApiResponse.success(
         blogs,
-        'Blogs got successfully!'
+        'Blogs fetched successfully'
       )
     );
 });
